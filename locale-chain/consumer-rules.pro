@@ -1,0 +1,2 @@
+-keep class com.i18nagent.localechain.LocaleChain { *; }
+-keep class com.i18nagent.localechain.FallbackMap { *; }
