@@ -128,4 +128,14 @@ class FallbackMapTest {
             assertFalse("Fallback chain for $locale must not contain itself", chain.contains(locale))
         }
     }
+
+    // -- Non-chain locale has no entry (C2 regression) --
+
+    @Test
+    fun nonChainLocale_hasNoFallbackEntry() {
+        assertNull("Locale 'ja' should not have a fallback chain", FallbackMap.defaultFallbacks["ja"])
+        assertNull("Locale 'en' should not have a fallback chain", FallbackMap.defaultFallbacks["en"])
+        assertNull("Locale 'ko' should not have a fallback chain", FallbackMap.defaultFallbacks["ko"])
+        assertNull("Locale 'zh' should not have a fallback chain", FallbackMap.defaultFallbacks["zh"])
+    }
 }

@@ -52,6 +52,52 @@ class FallbackResolverTest {
         assertEquals(listOf("nb", "no", "en"), chain)
     }
 
+    // -- Early return for non-chain locales (C2 regression) --
+
+    @Test
+    fun fullChain_nonChainLocale_returnsOnlyDefault() {
+        val chain = resolver.fullChain("ja")
+        assertEquals(listOf("en"), chain)
+    }
+
+    @Test
+    fun fullChain_defaultLocale_returnsOnlyDefault() {
+        val chain = resolver.fullChain("en")
+        assertEquals(listOf("en"), chain)
+    }
+
+    // -- Custom default locale (S1 regression) --
+
+    @Test
+    fun fullChain_customDefaultLocale_appendsCustomDefault() {
+        val custom = FallbackResolver(
+            fallbacks = mapOf("de-AT" to listOf("de")),
+            defaultLocale = "de"
+        )
+        val chain = custom.fullChain("de-AT")
+        assertEquals(listOf("de"), chain)
+    }
+
+    @Test
+    fun fullChain_customDefaultLocale_unknownLocale() {
+        val custom = FallbackResolver(
+            fallbacks = mapOf("de-AT" to listOf("de")),
+            defaultLocale = "de"
+        )
+        val chain = custom.fullChain("fr")
+        assertEquals(listOf("de"), chain)
+    }
+
+    @Test
+    fun fullChain_customDefaultLocale_appendsWhenNotInChain() {
+        val custom = FallbackResolver(
+            fallbacks = mapOf("pt-BR" to listOf("pt-PT", "pt")),
+            defaultLocale = "de"
+        )
+        val chain = custom.fullChain("pt-BR")
+        assertEquals(listOf("pt-PT", "pt", "de"), chain)
+    }
+
     // -- Thread safety --
 
     @Test

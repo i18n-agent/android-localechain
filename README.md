@@ -1,6 +1,6 @@
 # LocaleChain for Android
 
-Smart locale fallback chains for Android — because pt-BR users deserve pt-PT, not English.
+Smart locale fallback chains for Android -- because pt-BR users deserve pt-PT, not English.
 
 ## The Problem
 
@@ -14,12 +14,13 @@ Your users see English when a perfectly good translation exists in a sibling loc
 
 Two lines of setup. Zero changes to your existing localization code.
 
-LocaleChain wraps your Activity's `Context` and intercepts string lookups (`getString()`, `getText()`, `getQuantityString()`). When a translation is missing for the current locale, it walks a configurable fallback chain before giving up. It works with everything that calls `Resources` under the hood:
+LocaleChain wraps your Activity's `Context` and intercepts string lookups (`getString()`, `getText()`, `getQuantityString()`, `getQuantityText()`, `getStringArray()`, `getTextArray()`). When a translation is missing for the current locale, it walks a configurable fallback chain before giving up. It works with everything that calls `Resources` under the hood:
 
 - `getString(R.string.key)` in code
 - `android:text="@string/key"` in XML layouts
 - `stringResource(R.string.key)` in Jetpack Compose
 - `getQuantityString()` for plurals
+- `getStringArray()` for string arrays
 
 ## Installation
 
@@ -34,7 +35,7 @@ dependencies {
 ## Quick Start
 
 ```kotlin
-// 1. Application.onCreate() — configure chains once
+// 1. Application.onCreate() -- configure chains once
 class MyApp : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -42,7 +43,7 @@ class MyApp : Application() {
     }
 }
 
-// 2. BaseActivity — wrap context per Activity
+// 2. BaseActivity -- wrap context per Activity
 open class BaseActivity : AppCompatActivity() {
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleChain.wrap(newBase))
@@ -61,6 +62,14 @@ LocaleChain.configure()
 ```
 
 Uses all built-in fallback chains. Covers Portuguese, Spanish, French, German, Italian, Dutch, Norwegian, and Malay regional variants.
+
+### With a custom default locale
+
+```kotlin
+LocaleChain.configure(defaultLocale = "de")
+```
+
+If your app's base locale is not English, specify it explicitly. The default locale is used as the final fallback when no chain entry matches.
 
 ### With overrides (merge with defaults)
 
@@ -178,7 +187,26 @@ Only the chains you specify will be active. No defaults.
 2. `wrap()` wraps your Activity's `Context` with a custom `ContextWrapper` that intercepts `Resources` calls.
 3. When a string is not found in the current locale (detected by comparing against the default locale's value), LocaleChain walks the fallback chain in order.
 4. Each fallback locale's `Resources` is created via `createConfigurationContext()` and cached for subsequent lookups.
-5. All shared state is protected by `ReentrantReadWriteLock` for thread safety.
+5. Locales not in the fallback map skip resolution entirely (zero overhead).
+6. All shared state is protected by `ReentrantReadWriteLock` for thread safety.
+
+## Known Limitations
+
+### String equality detection
+
+Android's `Resources.getString()` never throws for a missing locale-specific translation -- it silently returns the default locale's value. LocaleChain detects "missing" translations by comparing the current locale's value against the default locale's value.
+
+This means: **if a translation is legitimately identical to the default locale's text, LocaleChain will treat it as "missing" and attempt fallback resolution.** Common examples include brand names, URLs, technical terms, and short words like "OK", "Wi-Fi", or "Email" that are the same across languages.
+
+In practice this rarely causes visible issues because the fallback chain will also return the same value. But if a regional variant intentionally uses the same text as the default while a parent locale has a different translation, the parent locale's value may be incorrectly preferred.
+
+### Activity lifecycle
+
+`ChainResources` reads the locale from the current `Resources` configuration on each lookup. If you change the app's locale at runtime (in-app language switching), Activities must be recreated for the new locale to take effect. This is standard Android behavior.
+
+### Resource cache lifecycle
+
+Fallback locale `Resources` objects are cached per `FallbackResolver` instance. The cache is cleared when you call `LocaleChain.reset()`. Calling `configure()` creates a new resolver with a fresh cache. For most apps, no manual cache management is needed.
 
 ## Java Usage
 
@@ -189,6 +217,8 @@ public class MyApp extends Application {
     public void onCreate() {
         super.onCreate();
         LocaleChain.configure();
+        // Or with a custom default locale:
+        // LocaleChain.configure("de");
     }
 }
 
@@ -207,16 +237,22 @@ public class BaseActivity extends AppCompatActivity {
 Yes. The `ContextWrapper` pattern is used by many production libraries including Calligraphy, AppLocale, and Google's own AppCompat.
 
 **Performance impact?**
-Negligible. Fallback resources are loaded lazily and cached. The fallback path only triggers when the current locale genuinely does not have a translation.
+Negligible. Locales not in the fallback map skip resolution entirely. For fallback-eligible locales, resources are loaded lazily and cached.
 
 **Jetpack Compose compatibility?**
 Yes. Compose's `stringResource()` calls `Resources.getString()` internally, so it works automatically.
 
 **What about plurals?**
-Works with `getQuantityString()` and plurals defined in `plurals.xml`.
+Works with `getQuantityString()` and `getQuantityText()` for plurals defined in `plurals.xml`.
+
+**What about string arrays?**
+Works with `getStringArray()` and `getTextArray()`.
 
 **Can I deactivate it?**
 Yes. Call `LocaleChain.reset()` to clear configuration. The next `wrap()` call will be a no-op pass-through.
+
+**What if my app's default language is not English?**
+Use `LocaleChain.configure(defaultLocale = "de")` (or `"fr"`, `"ja"`, etc.) to set your base locale.
 
 **Minimum Android version?**
 API 21 (Android 5.0).

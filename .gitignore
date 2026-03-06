@@ -10,3 +10,4 @@
 local.properties
 /locale-chain/build
 /sample/build
+!gradle/wrapper/gradle-wrapper.jar

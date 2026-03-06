@@ -1,6 +1,7 @@
 package com.i18nagent.localechain.sample
 
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +23,13 @@ class MainActivity : AppCompatActivity() {
 
         tvGreeting.text = getString(R.string.greeting)
         tvFarewell.text = getString(R.string.farewell)
-        tvLocale.text = "Current locale: ${resources.configuration.locales[0].toLanguageTag()}"
+
+        val localeTag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            resources.configuration.locales[0].toLanguageTag()
+        } else {
+            @Suppress("DEPRECATION")
+            resources.configuration.locale.toLanguageTag()
+        }
+        tvLocale.text = "Current locale: $localeTag"
     }
 }

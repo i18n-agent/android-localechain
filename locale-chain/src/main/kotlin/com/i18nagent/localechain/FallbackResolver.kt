@@ -6,8 +6,11 @@ import android.content.res.Resources
 import android.os.Build
 import android.os.LocaleList
 import androidx.annotation.AnyThread
+import androidx.annotation.VisibleForTesting
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+
+internal data class ResolveResult(val value: String, val localeTag: String)
 
 @AnyThread
 internal class FallbackResolver(
@@ -16,7 +19,8 @@ internal class FallbackResolver(
 ) {
     private val resourcesCache = ConcurrentHashMap<String, Resources>()
 
-    fun fullChain(locale: String): List<String> {
+    @VisibleForTesting
+    internal fun fullChain(locale: String): List<String> {
         val chain = (fallbacks[locale] ?: emptyList()).toMutableList()
         if (!chain.contains(defaultLocale)) {
             chain.add(defaultLocale)
@@ -28,7 +32,9 @@ internal class FallbackResolver(
         resId: Int,
         context: Context,
         currentLocaleTag: String
-    ): String? {
+    ): ResolveResult? {
+        if (!fallbacks.containsKey(currentLocaleTag)) return null
+
         val chain = fullChain(currentLocaleTag)
         val defaultResources = getResourcesForLocale(context, defaultLocale)
         val defaultValue = try {
@@ -38,6 +44,7 @@ internal class FallbackResolver(
         }
 
         for (fallbackLocaleTag in chain) {
+            if (fallbackLocaleTag == defaultLocale) continue
             val fallbackResources = getResourcesForLocale(context, fallbackLocaleTag)
             val fallbackValue = try {
                 fallbackResources.getString(resId)
@@ -45,7 +52,7 @@ internal class FallbackResolver(
                 continue
             }
             if (fallbackValue != defaultValue) {
-                return fallbackValue
+                return ResolveResult(fallbackValue, fallbackLocaleTag)
             }
         }
         return null
@@ -56,7 +63,9 @@ internal class FallbackResolver(
         quantity: Int,
         context: Context,
         currentLocaleTag: String
-    ): String? {
+    ): ResolveResult? {
+        if (!fallbacks.containsKey(currentLocaleTag)) return null
+
         val chain = fullChain(currentLocaleTag)
         val defaultResources = getResourcesForLocale(context, defaultLocale)
         val defaultValue = try {
@@ -66,6 +75,7 @@ internal class FallbackResolver(
         }
 
         for (fallbackLocaleTag in chain) {
+            if (fallbackLocaleTag == defaultLocale) continue
             val fallbackResources = getResourcesForLocale(context, fallbackLocaleTag)
             val fallbackValue = try {
                 fallbackResources.getQuantityString(resId, quantity)
@@ -73,7 +83,7 @@ internal class FallbackResolver(
                 continue
             }
             if (fallbackValue != defaultValue) {
-                return fallbackValue
+                return ResolveResult(fallbackValue, fallbackLocaleTag)
             }
         }
         return null
@@ -84,6 +94,8 @@ internal class FallbackResolver(
         context: Context,
         currentLocaleTag: String
     ): CharSequence? {
+        if (!fallbacks.containsKey(currentLocaleTag)) return null
+
         val chain = fullChain(currentLocaleTag)
         val defaultResources = getResourcesForLocale(context, defaultLocale)
         val defaultValue = try {
@@ -93,6 +105,7 @@ internal class FallbackResolver(
         }
 
         for (fallbackLocaleTag in chain) {
+            if (fallbackLocaleTag == defaultLocale) continue
             val fallbackResources = getResourcesForLocale(context, fallbackLocaleTag)
             val fallbackValue = try {
                 fallbackResources.getText(resId)
@@ -106,6 +119,98 @@ internal class FallbackResolver(
         return null
     }
 
+    fun resolveQuantityText(
+        resId: Int,
+        quantity: Int,
+        context: Context,
+        currentLocaleTag: String
+    ): CharSequence? {
+        if (!fallbacks.containsKey(currentLocaleTag)) return null
+
+        val chain = fullChain(currentLocaleTag)
+        val defaultResources = getResourcesForLocale(context, defaultLocale)
+        val defaultValue = try {
+            defaultResources.getQuantityText(resId, quantity)
+        } catch (_: Resources.NotFoundException) {
+            return null
+        }
+
+        for (fallbackLocaleTag in chain) {
+            if (fallbackLocaleTag == defaultLocale) continue
+            val fallbackResources = getResourcesForLocale(context, fallbackLocaleTag)
+            val fallbackValue = try {
+                fallbackResources.getQuantityText(resId, quantity)
+            } catch (_: Resources.NotFoundException) {
+                continue
+            }
+            if (fallbackValue.toString() != defaultValue.toString()) {
+                return fallbackValue
+            }
+        }
+        return null
+    }
+
+    fun resolveStringArray(
+        resId: Int,
+        context: Context,
+        currentLocaleTag: String
+    ): Array<String>? {
+        if (!fallbacks.containsKey(currentLocaleTag)) return null
+
+        val chain = fullChain(currentLocaleTag)
+        val defaultResources = getResourcesForLocale(context, defaultLocale)
+        val defaultValue = try {
+            defaultResources.getStringArray(resId)
+        } catch (_: Resources.NotFoundException) {
+            return null
+        }
+
+        for (fallbackLocaleTag in chain) {
+            if (fallbackLocaleTag == defaultLocale) continue
+            val fallbackResources = getResourcesForLocale(context, fallbackLocaleTag)
+            val fallbackValue = try {
+                fallbackResources.getStringArray(resId)
+            } catch (_: Resources.NotFoundException) {
+                continue
+            }
+            if (!fallbackValue.contentEquals(defaultValue)) {
+                return fallbackValue
+            }
+        }
+        return null
+    }
+
+    fun resolveTextArray(
+        resId: Int,
+        context: Context,
+        currentLocaleTag: String
+    ): Array<CharSequence>? {
+        if (!fallbacks.containsKey(currentLocaleTag)) return null
+
+        val chain = fullChain(currentLocaleTag)
+        val defaultResources = getResourcesForLocale(context, defaultLocale)
+        val defaultValue = try {
+            defaultResources.getTextArray(resId)
+        } catch (_: Resources.NotFoundException) {
+            return null
+        }
+
+        for (fallbackLocaleTag in chain) {
+            if (fallbackLocaleTag == defaultLocale) continue
+            val fallbackResources = getResourcesForLocale(context, fallbackLocaleTag)
+            val fallbackValue = try {
+                fallbackResources.getTextArray(resId)
+            } catch (_: Resources.NotFoundException) {
+                continue
+            }
+            if (!fallbackValue.contentEquals(defaultValue)) {
+                return fallbackValue
+            }
+        }
+        return null
+    }
+
+    @VisibleForTesting
     internal fun getResourcesForLocale(context: Context, localeTag: String): Resources {
         return resourcesCache.getOrPut(localeTag) {
             val locale = parseLocaleTag(localeTag)
@@ -120,11 +225,13 @@ internal class FallbackResolver(
         }
     }
 
+    @VisibleForTesting
     internal fun clearCache() {
         resourcesCache.clear()
     }
 
     companion object {
+        @VisibleForTesting
         internal fun parseLocaleTag(tag: String): Locale {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 Locale.forLanguageTag(tag)

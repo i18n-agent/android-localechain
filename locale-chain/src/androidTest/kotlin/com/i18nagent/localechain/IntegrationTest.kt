@@ -59,4 +59,29 @@ class IntegrationTest {
         val result = LocaleChain.wrap(context)
         assertSame(context, result)
     }
+
+    // -- Custom default locale (S1 regression) --
+
+    @Test
+    fun configureWithCustomDefaultLocale_wrapsContext() {
+        LocaleChain.configure(defaultLocale = "de")
+        assertTrue(LocaleChain.isConfigured)
+
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val wrapped = LocaleChain.wrap(context)
+        assertTrue(wrapped is ChainContextWrapper)
+    }
+
+    @Test
+    fun configureOverridesWithCustomDefaultLocale_wrapsContext() {
+        LocaleChain.configure(
+            overrides = mapOf("de-AT" to listOf("de")),
+            defaultLocale = "de"
+        )
+        assertTrue(LocaleChain.isConfigured)
+
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val wrapped = LocaleChain.wrap(context)
+        assertTrue(wrapped is ChainContextWrapper)
+    }
 }

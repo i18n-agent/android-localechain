@@ -50,4 +50,31 @@ class LocaleChainTest {
     fun version_isSet() {
         assertTrue(LocaleChain.VERSION.isNotEmpty())
     }
+
+    // -- Custom default locale (S1 regression) --
+
+    @Test
+    fun configure_withCustomDefaultLocale() {
+        LocaleChain.configure(defaultLocale = "de")
+        assertTrue(LocaleChain.isConfigured)
+    }
+
+    @Test
+    fun configureWithOverrides_withCustomDefaultLocale() {
+        LocaleChain.configure(
+            overrides = mapOf("xx-YY" to listOf("xx")),
+            defaultLocale = "ja"
+        )
+        assertTrue(LocaleChain.isConfigured)
+    }
+
+    @Test
+    fun configureWithCustomFallbacks_withCustomDefaultLocale() {
+        LocaleChain.configure(
+            fallbacks = mapOf("pt-BR" to listOf("pt")),
+            mergeDefaults = false,
+            defaultLocale = "fr"
+        )
+        assertTrue(LocaleChain.isConfigured)
+    }
 }

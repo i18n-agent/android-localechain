@@ -18,29 +18,29 @@ object LocaleChain {
 
     @JvmStatic
     @AnyThread
-    fun configure() {
+    fun configure(defaultLocale: String = "en") {
         lock.write {
             resolver = FallbackResolver(
                 fallbacks = FallbackMap.defaultFallbacks,
-                defaultLocale = "en"
+                defaultLocale = defaultLocale
             )
         }
     }
 
     @JvmStatic
     @AnyThread
-    fun configure(overrides: Map<String, List<String>>) {
+    fun configure(overrides: Map<String, List<String>>, defaultLocale: String = "en") {
         lock.write {
             resolver = FallbackResolver(
                 fallbacks = FallbackMap.merge(FallbackMap.defaultFallbacks, overrides),
-                defaultLocale = "en"
+                defaultLocale = defaultLocale
             )
         }
     }
 
     @JvmStatic
     @AnyThread
-    fun configure(fallbacks: Map<String, List<String>>, mergeDefaults: Boolean) {
+    fun configure(fallbacks: Map<String, List<String>>, mergeDefaults: Boolean, defaultLocale: String = "en") {
         lock.write {
             val effective = if (mergeDefaults) {
                 FallbackMap.merge(FallbackMap.defaultFallbacks, fallbacks)
@@ -49,7 +49,7 @@ object LocaleChain {
             }
             resolver = FallbackResolver(
                 fallbacks = effective,
-                defaultLocale = "en"
+                defaultLocale = defaultLocale
             )
         }
     }
