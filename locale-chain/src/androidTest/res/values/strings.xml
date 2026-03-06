@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="greeting">Hello (en)</string>
+    <string name="farewell">Goodbye (en)</string>
+    <string name="en_only">English only</string>
+    <string name="es_only">Spanish only default</string>
+</resources>
